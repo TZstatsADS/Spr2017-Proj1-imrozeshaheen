@@ -1,112 +1,190 @@
 <html>
 <head>
 	<meta charset="utf-8">
+
+
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="http://d3js.org/d3.v4.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.21.0/d3-legend.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
 	<style>
 
-	.link {
-	  stroke: #999;
-  	stroke-opacity: 0.6;
-	}
+		.link {
+			stroke: #999;
+			stroke-opacity: 0.6;
+		}
 
-	.node text {
-	  font: 10px sans-serif;
-	}
+		.node text {
+			font: 12px sans-serif;
+		}
+
+		.label {
+			font-size: 100%; !important
+			font-weight: normal; !important
+		}
+
+		.president-filter {
+			margin: 0;
+		}
 
 	</style>
 </head>
 <body>
-	<script src="http://d3js.org/d3.v4.min.js"></script>
-	<script>
-		var width = 960,
-		    height = 500
+	<div class="container president-filter">
+		<h4>President filters</h2>
+			<form>
+				<label class="radio-inline">
+					<input type="radio" name="president-filter-radio" value="41" checked="">Last 41
+				</label>
+				<label class="radio-inline">
+					<input type="radio" name="president-filter-radio" value="31">Last 31
+				</label>
+				<label class="radio-inline">
+					<input type="radio" name="president-filter-radio" value="21">Last 21
+				</label>
+				<label class="radio-inline">
+					<input type="radio" name="president-filter-radio" value="11">Last 11
+				</label>
+			</form>
+		</div>
 
-		var svg = d3.select("body").append("svg")
-		    .attr("width", width)
-		    .attr("height", height);
+		<script>
 
-		var force = d3.forceSimulation()
-		    .force("x", d3.forceY(0.05))
-        .force("y", d3.forceX(0.05))
-		    .force("link", d3.forceLink().id(function(d) { return d.name; }).distance(100))
-		    .force("charge", d3.forceManyBody().strength(-100))
-		    .force("center", d3.forceCenter(width / 2, height / 2))
+			var data_file = "similarities_last_41.json"
 
-		d3.json("similarities_last_41.json", function(error, json) {
-		  if (error) throw error;
+			$(".president-filter form input:radio" ).click(function () {
+				choice = $('input[name=president-filter-radio]:checked').val();
+				choice = parseInt(choice);
 
-		  // force
-		  //     .nodes(json.nodes)
-		  //     .links(json.links)
-		  //     .start();
+				d3.select("svg").remove();
 
-		  var link = svg.selectAll(".link")
-	      .data(json.links)
-		    .enter().append("line")
-	      .attr("class", "link");
+				d3.json(data_file, function(error, json) {
+					nodes_len = Object.keys(json.nodes).length;
+					removed_nodes = json.nodes.splice(0, nodes_len - choice);
+					for (var node in removed_nodes) {
+						node = removed_nodes[node];
 
-		  var node = svg.selectAll(".node")
-	      .data(json.nodes)
-		    .enter().append("g")
-	      .attr("class", "node")
-	      .call(d3.drag);
+						json.links = $.grep(json.links, function(e){
+							return e.source != node.name;
+						});
 
-		  node.append("circle")
-			    .attr("r", 5)
-			    .attr("fill", function(d) {
-			      if (d.party == "Republican")
-			        return "#96281B";
-			      if (d.party == "Democrat")
-			        return "#446CB3";
-			      if (d.party.indexOf("Canada") >= 0)
-			        return "#00B16A"
-			      return "#BFBFBF"
-			      })
-			      .call(d3.drag()
-			          .on("start", dragstarted)
-			          .on("drag", dragged)
-			          .on("end", dragended));
+						json.links = $.grep(json.links, function(e){
+							return e.target != node.name;
+						});
+					}
 
-		  node.append("text")
-		      .attr("dx", 12)
-		      .attr("dy", ".35em")
-		      .text(function(d) { return d.name });
+					drawDragh(json);
+				});
 
-		 	force
-      		.nodes(json.nodes)
-      		.on("tick", ticked);
+			});
 
-  		force
-  				.force("link")
-      		.links(json.links);
+			d3.json(data_file, function(error, json) {
+				drawDragh(json);
+			});
 
-			function ticked() {
-		    link
-		    		.attr("x1", function(d) { return d.source.x; })
-		        .attr("y1", function(d) { return d.source.y; })
-		        .attr("x2", function(d) { return d.target.x; })
-		        .attr("y2", function(d) { return d.target.y; });
+			function drawDragh(json) {
+				var width = 960,
+				height = 960
 
-		    node
-		    		.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-		  };
-		});
+				var svg = d3.select("body").append("svg")
+				.attr("width", width)
+				.attr("height", height);
 
-		function dragstarted(d) {
-		  if (!d3.event.active) force.alphaTarget(0.3).restart();
-		  d.fx = d.x;
-		  d.fy = d.y;
-		}
+				var force = d3.forceSimulation()
+				.force("x", d3.forceY(0.05))
+				.force("y", d3.forceX(0.05))
+				.force("link", d3.forceLink().id(function(d) { return d.name; }).distance(100))
+				.force("charge", d3.forceManyBody().strength(-200))
+				.force("center", d3.forceCenter(width / 2, height / 2))
 
-		function dragged(d) {
-		  d.fx = d3.event.x;
-		  d.fy = d3.event.y;
-		}
 
-		function dragended(d) {
-		  if (!d3.event.active) force.alphaTarget(0);
-		  d.fx = null;
-		  d.fy = null;
-		}
-	</script>
-</body>
-</html>
+				svg.append("g")
+				.attr("class", "legendColor")
+				.attr("transform", "translate(20, 40)");
+
+				var ordinal = d3.scaleOrdinal()
+				.domain(['Republican', 'Democrat', 'Canada PMs', 'Other'])
+				.range(['#96281B', '#446CB3', '#00B16A', '#BFBFBF']);
+
+				var legendColor = d3.legendColor()
+				.shape('circle')
+				.shapePadding(15)
+				.labelOffset(20)
+				.scale(ordinal);
+
+				svg.select(".legendColor")
+				.call(legendColor);
+
+				var link = svg.selectAll(".link")
+				.data(json.links)
+				.enter().append("line")
+				.attr("class", "link");
+
+				var node = svg.selectAll(".node")
+				.data(json.nodes)
+				.enter().append("g")
+				.attr("class", "node")
+				.call(d3.drag()
+					.on("start", dragstarted)
+					.on("drag", dragged)
+					.on("end", dragended));
+
+				node.append("circle")
+				.attr("r", 5)
+				.attr("fill", function(d) {
+					if (d.party == "Republican")
+						return "#96281B";
+					if (d.party == "Democrat")
+						return "#446CB3";
+					if (d.party.indexOf("Canada") >= 0)
+						return "#00B16A"
+					return "#BFBFBF"
+				})
+
+				node.append("text")
+				.attr("dx", 12)
+				.attr("dy", ".35em")
+				.text(function(d) { return d.name });
+
+				force
+				.nodes(json.nodes)
+				.on("tick", ticked);
+
+				force
+				.force("link")
+				.links(json.links);
+
+				function ticked() {
+					link
+					.attr("x1", function(d) { return d.source.x; })
+					.attr("y1", function(d) { return d.source.y; })
+					.attr("x2", function(d) { return d.target.x; })
+					.attr("y2", function(d) { return d.target.y; });
+
+					node
+					.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+				};
+
+				function dragstarted(d) {
+					if (!d3.event.active) force.alphaTarget(0.3).restart();
+					d.fx = d.x;
+					d.fy = d.y;
+				}
+
+				function dragged(d) {
+					d.fx = d3.event.x;
+					d.fy = d3.event.y;
+				}
+
+				function dragended(d) {
+					if (!d3.event.active) force.alphaTarget(0);
+					d.fx = null;
+					d.fy = null;
+				}
+				// });
+			}
+		</script>
+	</body>
+	</html>
